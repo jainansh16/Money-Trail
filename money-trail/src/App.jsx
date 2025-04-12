@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
-import AccountDetail from './pages/AccountDetail';
 
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
+import AccountDetail from './pages/AccountDetail';
 import Merchants from './pages/Merchants';
 import Alerts from './pages/Alerts';
 

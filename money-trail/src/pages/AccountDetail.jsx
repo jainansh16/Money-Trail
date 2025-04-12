@@ -3,34 +3,70 @@ import { useState } from "react";
 import GaugeChart from "react-gauge-chart";
 import NetworkGraph from "../components/NetworkGraph";
 
+const accountsMap = {
+  "123456": {
+    name: "John Doe",
+    score: 9,
+    flags: ["Multiple logins from new IPs", "Unusual withdrawal timing"],
+    transactions: [
+      { date: "4/11/25", type: "Withdrawal", partner: "ATM", amount: 400, flagged: true },
+      { date: "4/10/25", type: "Deposit", partner: "Employer", amount: 2500, flagged: false },
+    ]
+  },
+  "789012": {
+    name: "Ansh Jain",
+    score: 8,
+    flags: ["Round-Tripping", "High-Frequency Transfer", "Dormant → Active", "Rapid Withdrawals"],
+    transactions: [
+      { date: "4/11/25", type: "Transfer", partner: "#342897", amount: 4000, flagged: true },
+      { date: "4/10/25", type: "Payment", partner: "#562341", amount: 1200, flagged: false },
+    ]
+  },
+  "832541": {
+    name: "Mary Johnson",
+    score: 7,
+    flags: ["Crypto purchase flagged", "Suspicious IP login"],
+    transactions: [
+      { date: "4/09/25", type: "Transfer", partner: "CryptoX", amount: 900, flagged: true },
+      { date: "4/08/25", type: "Deposit", partner: "External Source", amount: 1500, flagged: false },
+    ]
+  },
+  "763215": {
+    name: "David Black",
+    score: 6,
+    flags: ["Login attempt from unknown device"],
+    transactions: [
+      { date: "4/07/25", type: "Transfer", partner: "#234456", amount: 600, flagged: true },
+      { date: "4/06/25", type: "Payment", partner: "ShellCorp", amount: 1800, flagged: false },
+    ]
+  },
+  "987654": {
+    name: "Susan White",
+    score: 5,
+    flags: ["Round-tripping", "Merchant mismatch"],
+    transactions: [
+      { date: "4/05/25", type: "Transfer", partner: "#989823", amount: 1000, flagged: true },
+      { date: "4/04/25", type: "Deposit", partner: "External Source", amount: 2200, flagged: false },
+    ]
+  },
+};
+
 const AccountDetail = () => {
   const { id } = useParams();
   const [tab, setTab] = useState("overview");
 
-  const account = {
-    id: "789012",
-    name: "Ansh Jain",
-    score: 8,
-    flags: [
-      "Round-Tripping",
-      "High-Frequency Transfer",
-      "Dormant → Active",
-      "Rapid Withdrawals"
-    ],
-    transactions: [
-      { date: "4/11/25", type: "Transfer", partner: "#342897", amount: 4000, flagged: true },
-      { date: "4/10/25", type: "Payment", partner: "#562341", amount: 1200, flagged: false },
-      { date: "4/09/25", type: "Transfer", partner: "#873012", amount: 900, flagged: true },
-      { date: "4/08/25", type: "Deposit", partner: "External Source", amount: 1500, flagged: false },
-    ]
+  const account = accountsMap[id] || {
+    name: "Unknown",
+    score: 0,
+    flags: [],
+    transactions: [],
   };
 
   return (
     <div style={{ padding: "2rem" }}>
       <h2>Account Detail</h2>
-      <h3>{account.name} - Account #{account.id}</h3>
+      <h3>{account.name} - Account #{id}</h3>
 
-      {/* Tabs */}
       <div style={{ display: "flex", gap: "1rem", margin: "1rem 0" }}>
         {["overview", "transaction", "network", "flags"].map((t) => (
           <button
@@ -50,7 +86,6 @@ const AccountDetail = () => {
         ))}
       </div>
 
-      {/* Tab Content */}
       <div style={{ marginTop: "2rem" }}>
         {tab === "overview" && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -98,16 +133,14 @@ const AccountDetail = () => {
           </table>
         )}
 
-        {tab === "network" && <NetworkGraph />}
+        {tab === "network" && <NetworkGraph accountId={id} />}
 
         {tab === "flags" && (
-          <div>
-            <ul>
-              {account.flags.map((flag, i) => (
-                <li key={i}>✅ {flag}</li>
-              ))}
-            </ul>
-          </div>
+          <ul>
+            {account.flags.map((flag, i) => (
+              <li key={i}>✅ {flag}</li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

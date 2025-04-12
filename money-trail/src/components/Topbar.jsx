@@ -1,23 +1,16 @@
+import SearchBar from "./SearchBar"; // ✅ Import it
+
 const Topbar = () => {
-    return (
-      <header>
-        {/* LEFT: Search Bar */}
-        <input
-          type="text"
-          placeholder="Search accounts, merchants..."
-          style={{
-            padding: "0.5rem",
-            borderRadius: "5px",
-            border: "1px solid #ccc",
-            width: "600px",
-            maxWidth: "100%",
-          }}
-        />
-  
-        {/* RIGHT: Profile Icon */}
-        <div className="avatar" />
-      </header>
-    );
-  };
-  
-  export default Topbar;  
+  return (
+    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}>
+      
+      {/* LEFT: Custom SearchBar Component */}
+      <SearchBar />
+
+      {/* RIGHT: Profile Icon */}
+      <div className="avatar" />
+    </header>
+  );
+};
+
+export default Topbar;

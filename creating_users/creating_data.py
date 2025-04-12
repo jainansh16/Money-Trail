@@ -213,7 +213,7 @@ def simulate_transfers(account_pairs, api_key = API_KEY, base_url="http://api.ne
             )
 
         # Fraudulent transfer (simulate on every even-indexed pair)
-        else:
+        if i % 2 == 0:
             make_transfer(
                 from_account_id=from_account,
                 to_account_id=to_account,
@@ -230,7 +230,7 @@ def main():
     create_customers_and_accounts()
     print("🔁 Starting transer simulation...\n")
     print(len(customer_accounts))
-    simulate_transfers([(customer_accounts[1]["account_id"], customer_accounts[3]["account_id"]), (customer_accounts[1]["account_id"], customer_accounts[3]["account_id"])])
+    simulate_transfers([(customer_accounts[1]["account_id"], customer_accounts[3]["account_id"]), (customer_accounts[0]["account_id"], customer_accounts[2]["account_id"])])
     print("\n✅ Simulation complete.")
 
 

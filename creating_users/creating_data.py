@@ -240,9 +240,10 @@ def main():
     print("🔁 Starting customer simulation...\n")
     print(len(customers))
     print(customers)
-    merchants = create_merchants()
-    simulate_purchases(customers, merchants)
-    simulate_transfers([(customers[1], customers[3]), (customers[0], customers[2])])
+    # merchants = create_merchants()
+    #simulate_purchases(customers, merchants)
+    # simulate_transfers([(customers[1], customers[3]), (customers[0], customers[2])])
+    # simulate_withdrawals(customers)
     print("\n✅ Simulation complete.")
 
 

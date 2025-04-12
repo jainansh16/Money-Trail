@@ -7,6 +7,7 @@ import Accounts from './pages/Accounts';
 import AccountDetail from './pages/AccountDetail';
 import Merchants from './pages/Merchants';
 import Alerts from './pages/Alerts';
+import AccountActionsPage from './pages/AccountActionsPage'; // 👈 Add this line
 
 import './App.css';
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/account/:id" element={<AccountDetail />} />
             <Route path="/merchants" element={<Merchants />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/account-actions" element={<AccountActionsPage />} /> {/* 👈 Add this line */}
           </Routes>
         </div>
       </div>

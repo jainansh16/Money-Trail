@@ -13,6 +13,7 @@ const Sidebar = () => {
         <Link to="/accounts">Accounts</Link>
         <Link to="/merchants">Merchants</Link>
         <Link to="/alerts">Alerts</Link>
+        <Link to="/account-actions">Account Actions</Link> {/* 👈 Added link */}
       </nav>
     </aside>
   );

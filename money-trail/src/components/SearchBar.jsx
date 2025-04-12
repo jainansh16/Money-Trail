@@ -80,18 +80,12 @@ const SearchBar = () => {
 
   return (
     <input
-      type="text"
-      placeholder="Search accounts, merchants..."
-      value={query}
-      onChange={(e) => setQuery(e.target.value)}
-      onKeyPress={handleKeyPress}
-      style={{
-        padding: "0.5rem",
-        borderRadius: "5px",
-        border: "1px solid #ccc",
-        width: "600px",
-        maxWidth: "100%",
-      }}
+        type="text"
+        placeholder="Search accounts, merchants..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyPress={handleKeyPress}
+        className="input search-input"
     />
   );
 };

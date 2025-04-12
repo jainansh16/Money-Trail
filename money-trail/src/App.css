@@ -41,7 +41,8 @@ aside nav a:hover {
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
-  height: 100vh;
+  min-height: 100vh; 
+  overflow-y: auto;  
 }
 
 header {
@@ -108,4 +109,24 @@ li {
 html, body, #root {
   height: 100%;
   width: 100%;
+}
+
+.input {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f4f4f4;
+  color: #111;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #007bff;
+  background-color: #ffffff;
+}
+
+.search-input {
+  max-width: 600px;
 }

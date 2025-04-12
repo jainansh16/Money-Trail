@@ -28,7 +28,7 @@ const NetworkGraph = ({ accountId }) => {
           { id: "000", type: "transfer", label: "$400 Round-tripping" },
           { id: "Deposit", type: "deposit", label: "$3000" },
           { id: "CryptoXchange", type: "highRisk", label: "$1200" },
-          { id: "TravelCo", type: "merchant", label: "$300 Spending Spike" },
+          { id: "TravelCo", type: "withdrawal", label: "$300 Spending Spike" },
         ],
         links: [
           { source: "Chase Card", target: "Ansh Jain", type: "credit" },
@@ -36,13 +36,13 @@ const NetworkGraph = ({ accountId }) => {
           { source: "000", target: "Ansh Jain", type: "roundtripping" },
           { source: "Deposit", target: "Ansh Jain", type: "deposit" },
           { source: "Ansh Jain", target: "CryptoXchange", type: "highRisk" },
-          { source: "Ansh Jain", target: "TravelCo", type: "merchant" },
+          { source: "Ansh Jain", target: "TravelCo", type: "withdrawal" },
         ]
       },
       "832541": {
         nodes: [
           { id: "Mary Johnson", type: "central" },
-          { id: "CryptoX", type: "merchant", label: "$900" },
+          { id: "CryptoX", type: "withdrawal", label: "$900" },
           { id: "External Source", type: "deposit", label: "$1500" },
         ],
         links: [
@@ -54,11 +54,11 @@ const NetworkGraph = ({ accountId }) => {
         nodes: [
           { id: "David Black", type: "central" },
           { id: "#234456", type: "transfer", label: "$600" },
-          { id: "ShellCorp", type: "merchant", label: "$1800" },
+          { id: "ShellCorp", type: "withdrawal", label: "$1800" },
         ],
         links: [
           { source: "#234456", target: "David Black", type: "transfer" },
-          { source: "ShellCorp", target: "David Black", type: "merchant" },
+          { source: "ShellCorp", target: "David Black", type: "withdrawal" },
         ]
       },
       "987654": {
@@ -95,22 +95,31 @@ const NetworkGraph = ({ accountId }) => {
       .attr("stroke", d => d.type === "highRisk" ? "red" : "#666")
       .attr("stroke-dasharray", d => d.type === "roundtripping" ? "6,2" : "0");
 
-    const node = svg.append("g")
-      .selectAll("circle")
+    const nodeGroup = svg.append("g")
+      .selectAll("g")
       .data(data.nodes)
-      .join("circle")
-      .attr("r", 20)
+      .join("g")
+      .call(drag(simulation));
+
+    // Draw shapes
+    nodeGroup.append(d => d.type === "highRisk" ? document.createElementNS(d3.namespaces.svg, "rect") : document.createElementNS(d3.namespaces.svg, "circle"))
+      .attr("r", d => d.type !== "highRisk" ? 20 : null)
+      .attr("width", d => d.type === "highRisk" ? 28 : null)
+      .attr("height", d => d.type === "highRisk" ? 28 : null)
+      .attr("x", d => d.type === "highRisk" ? -14 : null)
+      .attr("y", d => d.type === "highRisk" ? -14 : null)
+      .attr("cx", d => d.type !== "highRisk" ? 0 : null)
+      .attr("cy", d => d.type !== "highRisk" ? 0 : null)
       .attr("fill", d => {
         switch (d.type) {
-          case "credit": return "#90caf9";
-          case "transfer": return "#aed581";
-          case "deposit": return "#fff176";
-          case "highRisk": return "#ef9a9a";
-          case "merchant": return "#ce93d8";
-          default: return "#64b5f6";
+          case "credit": return "#0072B2";       // Blue
+          case "transfer": return "#009E73";     // Green
+          case "deposit": return "#F0E442";      // Yellow
+          case "withdrawal": return "#56B4E9";   // Sky Blue
+          case "highRisk": return "#000000";     // Black square
+          default: return "#999999";             // Central/neutral
         }
-      })
-      .call(drag(simulation));
+      });
 
     const label = svg.append("g")
       .selectAll("text")
@@ -129,10 +138,7 @@ const NetworkGraph = ({ accountId }) => {
         .attr("x2", d => d.target.x)
         .attr("y2", d => d.target.y);
 
-      node
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y);
-
+      nodeGroup.attr("transform", d => `translate(${d.x},${d.y})`);
       label
         .attr("x", d => d.x)
         .attr("y", d => d.y);
@@ -160,16 +166,17 @@ const NetworkGraph = ({ accountId }) => {
   return (
     <div style={{ textAlign: "center", marginTop: "20px" }}>
       <svg ref={svgRef}></svg>
-      <div style={{ fontSize: "13px", marginTop: "15px" }}>
-        <strong>Legend:</strong><br />
-        ● Transfer &nbsp;&nbsp;
-        <span style={{ backgroundColor: "#90caf9", padding: "2px 6px", borderRadius: "4px" }}>Credit Card</span> &nbsp;&nbsp;
-        <span style={{ backgroundColor: "#aed581", padding: "2px 6px", borderRadius: "4px" }}>Transfer</span> &nbsp;&nbsp;
-        <span style={{ backgroundColor: "#fff176", padding: "2px 6px", borderRadius: "4px" }}>Deposit</span> &nbsp;&nbsp;
-        <span style={{ backgroundColor: "#ce93d8", padding: "2px 6px", borderRadius: "4px" }}>Merchant</span><br />
+      <div style={{ fontSize: "15px", marginTop: "20px", lineHeight: "1.8" }}>
+        <strong style={{ fontSize: "16px" }}>Legend:</strong><br />
+        <span style={{ backgroundColor: "#0072B2", color: "#fff", padding: "4px 8px", borderRadius: "4px" }}>Credit Card</span> &nbsp;&nbsp;
+        <span style={{ backgroundColor: "#009E73", color: "#fff", padding: "4px 8px", borderRadius: "4px" }}>Transfer</span> &nbsp;&nbsp;
+        <span style={{ backgroundColor: "#F0E442", padding: "4px 8px", borderRadius: "4px" }}>Deposit</span> &nbsp;&nbsp;
+        <span style={{ backgroundColor: "#56B4E9", color: "#000", padding: "4px 8px", borderRadius: "4px" }}>Withdrawal</span> &nbsp;&nbsp;
+        <span style={{ backgroundColor: "#000", color: "#fff", padding: "4px 8px", borderRadius: "4px" }}>High Risk</span><br />
         <span style={{ borderBottom: "2px dashed #666" }}>Dashed</span> = Round-tripping &nbsp;&nbsp;
-        <span style={{ color: "red", fontWeight: "bold" }}>Red</span> = High Risk
+        <span style={{ color: "red", fontWeight: "bold" }}>Red line</span> = High Risk Path
       </div>
+
     </div>
   );
 };

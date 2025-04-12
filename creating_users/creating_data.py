@@ -13,52 +13,56 @@ BASE = 'http://api.nessieisreal.com'
 
 # Initialize merchant list
 merchants = []
-customer_accounts = []
+customers = []
 
 def random_int(min_val, max_val):
     return random.randint(min_val, max_val)
 
-# def create_merchant(name, category, city="New York", state="NY"):
-#     try:
-#         res = requests.post(f"{BASE}/merchants?key={API_KEY}", json={
-#             "name": name,
-#             "category": category,
-#             "address": {
-#                 "street_number": "123",
-#                 "street_name": "Main St",
-#                 "city": city,
-#                 "state": state,
-#                 "zip": "10001"
-#             },
-#             "geocode": {
-#                 "lat": 40.7128,
-#                 "lng": -74.0060
-#             }
-#         })
-#         res.raise_for_status()
-#         data = res.json()
-#         merchant = data["objectCreated"]  # ✅ Extract actual merchant object
-#         print(f"Merchant created: {merchant['name']} (ID: {merchant['_id']})")
-#         return merchant["_id"]
-#     except Exception as e:
-#         print("Error creating merchant:", e)
-#         try:
-#             print("Full response:", res.text)
-#         except:
-#             pass
-#         return None
+def create_merchant(name, category, city="New York", state="NY"):
+    try:
+        res = requests.post(f"{BASE}/merchants?key={API_KEY}", json={
+            "name": name,
+            "category": category,
+            "address": {
+                "street_number": "123",
+                "street_name": "Main St",
+                "city": city,
+                "state": state,
+                "zip": "10001"
+            },
+            "geocode": {
+                "lat": 40.7128,
+                "lng": -74.0060
+            }
+        })
+        res.raise_for_status()
+        data = res.json()
+        merchant = data["objectCreated"]  # ✅ Extract actual merchant object
+        print(f"Merchant created: {merchant['name']} (ID: {merchant['_id']})")
+        return merchant["_id"]
+    except Exception as e:
+        print("Error creating merchant:", e)
+        try:
+            print("Full response:", res.text)
+        except:
+            pass
+        return None
 
-# def create_merchants():
-#     categories = [
-#         ("Trader Joe's", "Groceries"),
-#         ("Shell Consulting", "Consulting")
-#     ]
-#     created_ids = []
-#     for name, category in categories:
-#         merchant_id = create_merchant(name, category)
-#         if merchant_id:
-#             created_ids.append(merchant_id)
-#     return created_ids
+def create_merchants():
+    categories = [
+        ("Trader Joe's", "Groceries"),
+        ("Shell Consulting", "Consulting")
+    ]
+    created_ids = []
+    for name, category in categories:
+        merchant_id = create_merchant(name, category)
+        if merchant_id:
+            created_ids.append(merchant_id)
+    return created_ids
+
+def get_account_id(customer_id):
+    account_id = requests.get(f"{BASE}/customers/{customer_id}/accounts?key={API_KEY}").json()[0]['_id']
+    return account_id
 
 def create_customer(first_name, last_name, street_no, street_name, city, state, zip_code):
     res = requests.post(f"{BASE}/customers?key={API_KEY}", json={
@@ -142,18 +146,18 @@ def create_customers_and_accounts():
     for i in range(len(first_names)):
         customer_id = create_customer(first_names[i], last_names[i], "123", "Bitcamp Way", "College Park", "MD", "20740")
         account_id = create_account(customer_id)
-        customer_accounts.append({
+        customers.append({
             "first_name": first_names[i],
             "last_name": last_names[i],
-            "account_id": account_id
+            "customer_id": customer_id
         })
         print(f"✅ Created account for {first_names[i]} {last_names[i]} (Customer ID: {customer_id}, Account ID: {account_id})")
 
-    return customer_accounts
+    return customers
 
-def simulate_purchases(customer_accounts):
-    for c in customer_accounts:
-        account_id = c["account_id"]
+def simulate_purchases(customers, merchants):
+    for c in customers:
+        account_id = get_account_id(c["customer_id"])
         name = c["first_name"]
 
         # Normal purchases
@@ -167,9 +171,9 @@ def simulate_purchases(customer_accounts):
 
         print(f"🛒 Purchases simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
 
-def simulate_withdrawals(customer_accounts):
-    for c in customer_accounts:
-        account_id = c["account_id"]
+def simulate_withdrawals(customers):
+    for c in customers:
+        account_id = get_account_id(c["customer_id"])
         name = c["first_name"]
 
         # Normal withdrawals
@@ -183,9 +187,9 @@ def simulate_withdrawals(customer_accounts):
 
         print(f"🏧 Withdrawals simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
 
-def simulate_deposits(customer_accounts):
-    for c in customer_accounts:
-        account_id = c["account_id"]
+def simulate_deposits(customers):
+    for c in customers:
+        account_id = get_account_id(c["customer_id"])
         name = c["first_name"]
         print(name)
         # Normal deposits
@@ -199,8 +203,13 @@ def simulate_deposits(customer_accounts):
 
         print(f"🏦 Deposits simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
 
-def simulate_transfers(account_pairs, api_key = API_KEY, base_url="http://api.nessieisreal.com"):
-    for i, (from_account, to_account) in enumerate(account_pairs):
+def simulate_transfers(customer_pairs, api_key = API_KEY, base_url="http://api.nessieisreal.com"):
+
+    for i, (from_customer, to_customer) in enumerate(customer_pairs):
+
+        from_account = get_account_id(from_customer["customer_id"])
+        to_account = get_account_id(to_customer["customer_id"])
+    
         # Normal transfer
         if i % 2 != 0:
             make_transfer(
@@ -224,13 +233,16 @@ def simulate_transfers(account_pairs, api_key = API_KEY, base_url="http://api.ne
             )
 
 def main():
-# Assume customer_accounts is already populated with account data
+# Assume customers is already populated with account data
 # Example structure: [{"first_name": "Alice", "account_id": "xyz123"}, ...]
-    print(len(customer_accounts))
+    print(len(customers))
     create_customers_and_accounts()
-    print("🔁 Starting transer simulation...\n")
-    print(len(customer_accounts))
-    simulate_transfers([(customer_accounts[1]["account_id"], customer_accounts[3]["account_id"]), (customer_accounts[0]["account_id"], customer_accounts[2]["account_id"])])
+    print("🔁 Starting customer simulation...\n")
+    print(len(customers))
+    print(customers)
+    merchants = create_merchants()
+    simulate_purchases(customers, merchants)
+    simulate_transfers([(customers[1], customers[3]), (customers[0], customers[2])])
     print("\n✅ Simulation complete.")
 
 

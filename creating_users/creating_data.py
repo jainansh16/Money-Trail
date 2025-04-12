@@ -5,7 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv(dotenv_path="./credentials/.env")
+load_dotenv(dotenv_path="/Users/anshjain/Desktop/Money-Trail/credentials/.env")
 API_KEY = os.getenv("API_KEY")
 print("Loaded API Key:", API_KEY)
 
@@ -13,51 +13,52 @@ BASE = 'http://api.nessieisreal.com'
 
 # Initialize merchant list
 merchants = []
+customer_accounts = []
 
 def random_int(min_val, max_val):
     return random.randint(min_val, max_val)
 
-def create_merchant(name, category, city="New York", state="NY"):
-    try:
-        res = requests.post(f"{BASE}/merchants?key={API_KEY}", json={
-            "name": name,
-            "category": category,
-            "address": {
-                "street_number": "123",
-                "street_name": "Main St",
-                "city": city,
-                "state": state,
-                "zip": "10001"
-            },
-            "geocode": {
-                "lat": 40.7128,
-                "lng": -74.0060
-            }
-        })
-        res.raise_for_status()
-        data = res.json()
-        merchant = data["objectCreated"]  # ✅ Extract actual merchant object
-        print(f"Merchant created: {merchant['name']} (ID: {merchant['_id']})")
-        return merchant["_id"]
-    except Exception as e:
-        print("Error creating merchant:", e)
-        try:
-            print("Full response:", res.text)
-        except:
-            pass
-        return None
+# def create_merchant(name, category, city="New York", state="NY"):
+#     try:
+#         res = requests.post(f"{BASE}/merchants?key={API_KEY}", json={
+#             "name": name,
+#             "category": category,
+#             "address": {
+#                 "street_number": "123",
+#                 "street_name": "Main St",
+#                 "city": city,
+#                 "state": state,
+#                 "zip": "10001"
+#             },
+#             "geocode": {
+#                 "lat": 40.7128,
+#                 "lng": -74.0060
+#             }
+#         })
+#         res.raise_for_status()
+#         data = res.json()
+#         merchant = data["objectCreated"]  # ✅ Extract actual merchant object
+#         print(f"Merchant created: {merchant['name']} (ID: {merchant['_id']})")
+#         return merchant["_id"]
+#     except Exception as e:
+#         print("Error creating merchant:", e)
+#         try:
+#             print("Full response:", res.text)
+#         except:
+#             pass
+#         return None
 
-def create_merchants():
-    categories = [
-        ("Trader Joe's", "Groceries"),
-        ("Shell Consulting", "Consulting")
-    ]
-    created_ids = []
-    for name, category in categories:
-        merchant_id = create_merchant(name, category)
-        if merchant_id:
-            created_ids.append(merchant_id)
-    return created_ids
+# def create_merchants():
+#     categories = [
+#         ("Trader Joe's", "Groceries"),
+#         ("Shell Consulting", "Consulting")
+#     ]
+#     created_ids = []
+#     for name, category in categories:
+#         merchant_id = create_merchant(name, category)
+#         if merchant_id:
+#             created_ids.append(merchant_id)
+#     return created_ids
 
 def create_customer(first_name, last_name, street_no, street_name, city, state, zip_code):
     res = requests.post(f"{BASE}/customers?key={API_KEY}", json={
@@ -96,29 +97,111 @@ def make_purchase(account_id, merchant_id, amount, desc):
         "description": desc
     })
     res.raise_for_status()
+    
+def make_deposit(account_id, amount, description="Standard deposit"):
+    res = requests.post(f"{BASE}/accounts/{account_id}/deposits?key={API_KEY}", json={
+        "medium": "balance",
+        "amount": amount,
+        "transaction_date": datetime.now().strftime('%Y-%m-%d'),
+        "status": "completed",
+        "description": description
+    })
+    res.raise_for_status()
 
-def simulate():
+def make_withdrawal(account_id, amount, description="Standard withdrawal"):
+    res = requests.post(f"{BASE}/accounts/{account_id}/withdrawals?key={API_KEY}", json={
+        "medium": "balance",
+        "amount": amount,
+        "transaction_date": datetime.now().strftime('%Y-%m-%d'),
+        "status": "completed",
+        "description": description
+    })
+    res.raise_for_status()
+
+def create_customers_and_accounts():
     first_names = ["Alice", "Bob", "Charlie", "David"]
     last_names = ["Smith", "Johnson", "Williams", "Brown"]
 
     for i in range(len(first_names)):
         customer_id = create_customer(first_names[i], last_names[i], "123", "Bitcamp Way", "College Park", "MD", "20740")
         account_id = create_account(customer_id)
+        customer_accounts.append({
+            "first_name": first_names[i],
+            "last_name": last_names[i],
+            "account_id": account_id
+        })
+        print(f"✅ Created account for {first_names[i]} {last_names[i]} (Customer ID: {customer_id}, Account ID: {account_id})")
+
+    return customer_accounts
+
+def simulate_purchases(customer_accounts):
+    for c in customer_accounts:
+        account_id = c["account_id"]
+        name = c["first_name"]
 
         # Normal purchases
         for _ in range(5):
             make_purchase(account_id, merchants[0], random_int(20, 150), "Groceries")
 
-        # Suspicious behavior
-        if first_names[i] in ["Bob", "David"]:
+        # Suspicious purchases
+        if name in ["Bob", "David"]:
             for _ in range(12):
                 make_purchase(account_id, merchants[1], random_int(100, 300), "Consulting LLC - Possible shell")
 
-        print(f"Created customer {first_names[i]} with suspicious activity? {first_names[i] in ['Bob', 'David']}")
+        print(f"🛒 Purchases simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
+
+def simulate_withdrawals(customer_accounts):
+    for c in customer_accounts:
+        account_id = c["account_id"]
+        name = c["first_name"]
+
+        # Normal withdrawals
+        for _ in range(3):
+            make_withdrawal(account_id, random_int(20, 100), "ATM Withdrawal")
+
+        # Fraudulent behavior
+        if name in ["Bob", "David"]:
+            for _ in range(5):
+                make_withdrawal(account_id, random_int(400, 1000), "Suspicious ATM Withdrawal")
+
+        print(f"🏧 Withdrawals simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
+
+def simulate_deposits(customer_accounts):
+    for c in customer_accounts:
+        account_id = c["account_id"]
+        name = c["first_name"]
+        print(name)
+        # Normal deposits
+        for _ in range(2):
+            make_deposit(account_id, random_int(300, 1500), "Direct Deposit")
+
+        # Fraudulent behavior
+        if name in ["Bob", "David"]:
+            for _ in range(4):
+                make_deposit(account_id, random_int(5000, 10000), "Offshore Transfer - Investigate")
+
+        print(f"🏦 Deposits simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
+
+
+def main():
+# Assume customer_accounts is already populated with account data
+# Example structure: [{"first_name": "Alice", "account_id": "xyz123"}, ...]
+    
+    create_customers_and_accounts()
+    print("🔁 Starting deposit simulation...\n")
+    simulate_deposits(customer_accounts)
+
+    print("\n🔁 Starting withdrawal simulation...\n")
+    simulate_withdrawals(customer_accounts)
+
+    print("\n✅ Simulation complete.")
+
 
 if __name__ == "__main__":
-    merchants = create_merchants()
-    if len(merchants) == 2:
-        simulate()
-    else:
-        print("Could not initialize merchants. Simulation aborted.")
+    main()
+    # merchants = create_merchants()
+    # if len(merchants) == 2:
+    #     simulate()
+    # else:
+    #     print("Could not initialize merchants. Simulation aborted.")
+

@@ -1,0 +1,111 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #ffffff;
+  color: #111;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+aside {
+  width: 220px;
+  background-color: #1e1e2f;
+  color: white;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+aside h2 {
+  font-size: 20px;
+  margin-bottom: 2rem;
+}
+
+aside nav a {
+  color: white;
+  text-decoration: none;
+  margin-bottom: 1.2rem;
+  display: block;
+  font-size: 16px;
+}
+
+aside nav a:hover {
+  text-decoration: underline;
+}
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  height: 100vh;
+}
+
+header {
+  background-color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ddd;
+}
+
+.avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #ccc;
+}
+
+header input {
+  padding: 0.5rem;
+  width: 300px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+header .avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #ccc;
+}
+
+.dashboard {
+  padding: 2rem;
+  background-color: #ffffff;
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+section {
+  margin-bottom: 2.5rem;
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 1rem;
+  color: #222;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  margin-bottom: 0.75rem;
+  font-size: 15px;
+  color: #444;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}

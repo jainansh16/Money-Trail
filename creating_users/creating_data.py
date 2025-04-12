@@ -81,7 +81,7 @@ def create_account(customer_id):
         "type": "Checking",
         "nickname": "Hacked Checking",
         "rewards": 0,
-        "balance": random_int(2000, 8000)
+        "balance": 5000
     })
     res.raise_for_status()
     data = res.json()
@@ -117,6 +117,23 @@ def make_withdrawal(account_id, amount, description="Standard withdrawal"):
         "description": description
     })
     res.raise_for_status()
+
+def make_transfer(from_account_id, to_account_id, amount, description, api_key, base_url="http://api.nessieisreal.com"):
+    url = f"{base_url}/accounts/{from_account_id}/transfers?key={api_key}"
+    payload = {
+        "medium": "balance",
+        "payee_id": to_account_id,
+        "amount": amount,
+        "transaction_date": datetime.now().strftime('%Y-%m-%d'),
+        "description": description
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        print(f"✅ Transfer of ${amount} from {from_account_id} to {to_account_id}: {description}")
+    except requests.RequestException as e:
+        print(f"❌ Failed to transfer from {from_account_id} to {to_account_id}: {e}")
 
 def create_customers_and_accounts():
     first_names = ["Alice", "Bob", "Charlie", "David"]
@@ -182,18 +199,38 @@ def simulate_deposits(customer_accounts):
 
         print(f"🏦 Deposits simulated for {name} | Suspicious? {'Yes' if name in ['Bob', 'David'] else 'No'}")
 
+def simulate_transfers(account_pairs, api_key = API_KEY, base_url="http://api.nessieisreal.com"):
+    for i, (from_account, to_account) in enumerate(account_pairs):
+        # Normal transfer
+        if i % 2 != 0:
+            make_transfer(
+                from_account_id=from_account,
+                to_account_id=to_account,
+                amount=100,
+                description="Monthly Utility Bill",
+                api_key=api_key,
+                base_url=base_url
+            )
+
+        # Fraudulent transfer (simulate on every even-indexed pair)
+        else:
+            make_transfer(
+                from_account_id=from_account,
+                to_account_id=to_account,
+                amount=1000,
+                description="Suspicious Large Transfer to Unknown Payee",
+                api_key=api_key,
+                base_url=base_url
+            )
 
 def main():
 # Assume customer_accounts is already populated with account data
 # Example structure: [{"first_name": "Alice", "account_id": "xyz123"}, ...]
-    
+    print(len(customer_accounts))
     create_customers_and_accounts()
-    print("🔁 Starting deposit simulation...\n")
-    simulate_deposits(customer_accounts)
-
-    print("\n🔁 Starting withdrawal simulation...\n")
-    simulate_withdrawals(customer_accounts)
-
+    print("🔁 Starting transer simulation...\n")
+    print(len(customer_accounts))
+    simulate_transfers([(customer_accounts[1]["account_id"], customer_accounts[3]["account_id"]), (customer_accounts[1]["account_id"], customer_accounts[3]["account_id"])])
     print("\n✅ Simulation complete.")
 
 

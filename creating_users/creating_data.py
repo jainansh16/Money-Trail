@@ -165,7 +165,8 @@ def create_customers_and_accounts():
             "isFraud": False,
             "score": 0,
             "rapid": [], 
-            "frequency": [],
+            "frequency_transfer": [],
+            "frequency_purchase": [],
             "dormant": [],
             "circular": []
         }

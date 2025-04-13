@@ -284,25 +284,69 @@ def main():
     ##dormant
     dormant_id, dormant_weight = dormant_to_active(transfers, deposits, withdrawals)
     if doc and dormant_id:
-        existing_ids = set(doc.get("dormant", []))  # existing IDs in the 'rapid' array
+        existing_ids = doc.get("dormant", [])  
         if dormant_id not in existing_ids:
             db[collection].update_one(
                 {"_id": doc["_id"]},
-                {"$push": {"dormant": txn_id}}
-            )
+                {"$push": {"dormant": dormant_id}}
+            )        
             sus += dormant_weight
 
     ##high frequency
     frequency_transaction_id, frequency_purchase_ids, frequency_weight = high_frequency(transfers, purchases)
-    if doc and (frequency_transaction_id or frequency_purchase_ids):
-        existing_ids = set(doc.get("frequency", []))
-        for txn_id in frequency_transaction_id + frequency_purchase_ids:
-            if txn_id not in existing_ids:
-                users.update_one(
-                    {"_id": doc["_id"]},
-                    {"$push": {"frequency": txn_id}}
-                )
-    sus += frequency_weight
+    if doc and frequency_transaction_id:
+
+        retrieved_user = users.find_one({"_id": account_id})
+        existing_transactions = retrieved_user['frequency_transfer']
+        temp_list = []
+
+        for transfer in existing_transactions:
+
+            temp = False
+
+            for frequency_transition in frequency_transaction_id:
+
+                if frequency_transition not in transfer:
+
+                    temp = True
+
+            temp_list.append(temp)
+            
+        if False not in temp_list:
+            
+            db[collection].update_one(
+                {"_id": doc["_id"]},
+                {"$push": {"frequency_transfer": frequency_transaction_id}}
+            )
+
+            sus += 2
+
+    if doc and frequency_purchase_ids:
+
+        retrieved_user = users.find_one({"_id": account_id})
+        existing_transactions = retrieved_user['frequency_purchase']
+        temp_list = []
+
+        for transfer in existing_transactions:
+
+            temp = False
+
+            for frequency_transition in frequency_purchase_ids:
+
+                if frequency_transition not in transfer:
+
+                    temp = True
+
+            temp_list.append(temp)
+            
+        if False not in temp_list:
+            
+            db[collection].update_one(
+                {"_id": doc["_id"]},
+                {"$push": {"frequency_purchase": frequency_purchase_ids}}
+            )
+
+            sus += 2
     
     ##rapid
     rapid_transaction_id, rapid_weight = rapid_transfer(transfers, deposits, withdrawals, account_id)
@@ -331,32 +375,7 @@ def main():
                 {"$push": {"rapid": rapid_transaction_id}}
             )
 
-        score = retrieved_user['score']
-        score += circular_weight
-
-        if score > 10:
-
-            score = 10
-        
-        users.update_one({'_id': account}, {'$set': {'score': sus}})
-
-
-
-        # existing_ids = set(doc.get("rapid", []))  # existing IDs in the 'rapid' array
-        # temp_bool = []
-        # for txn_id in rapid_transaction_id:
-        #     temp = False
-        #     if txn_id not in existing_ids:
-                # db[collection].update_one(
-                #     {"_id": doc["_id"]},
-                #     {"$push": {"rapid": txn_id}}
-        #         )
-        #         temp = True
-        #     temp_bool.append(temp)
-
-        # if True in temp_bool:
-            
-        #     sus += rapid_weight
+            sus += rapid_weight
 
     if sus > 10:
 
@@ -365,7 +384,11 @@ def main():
     print("sus is ", sus)
 
     users.update_one({'_id': doc['_id']}, {'$set': {'score': sus}})
+
+    if sus >= 7:
     
+        users.update_one({'_id': doc['_id']}, {'$set': {'isFraud': True}})
+
     #Circular
     start_transfer = transfers[-1]
     customers = requests.get(f"{BASE}/customers?key={API_KEY}").json()
@@ -408,28 +431,18 @@ def main():
                     {"$push": {"circular": circular_transactions}}
                 )
 
-            score = retrieved_user['score']
-            score += circular_weight
+                score = retrieved_user['score']
+                score += circular_weight
 
-            if score > 10:
+                if score > 10:
 
-                score = 10
-            
-            users.update_one({'_id': account}, {'$set': {'score': sus}})
+                    score = 10
+                
+                users.update_one({'_id': account}, {'$set': {'score': score}})
 
-
-    # transaction_ids, rapid_weight = rapid_transfer(transfers, deposits, withdrawals, account_id)
-    # print("rapid ids:", transaction_ids)
-    # print("rapid weights:", rapid_weight)
-    # frequency_transfer_ids, frequency_purchase_ids, frequency_weight = high_frequency(transfers, purchases)
-    # print("high frequency transfer ids: ", frequency_transfer_ids)
-    # print("high frequency purchase ids:", frequency_purchase_ids)
-    # print("high frequency weights:", frequency_weight)
-    #when doing mongodb, if dormant_transaction is not an 
-    #empty string then we add it to the list of dormant transactions we have already checked
-    # dormant_transaction, dormant_weight = dormant_to_active(transfers, deposits, withdrawals)
-    # print("dormant ids:", dormant_transaction)
-    # print("dormant weight:", dormant_weight)
+                if score >= 7:
+    
+                    users.update_one({'_id': account}, {'$set': {'isFraud': True}})
 
 if __name__ == "__main__":
     main()

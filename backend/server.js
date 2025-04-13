@@ -26,7 +26,8 @@ const connectionString = MONGO_CONNECTION;
 // Set up MongoDB connection (using the native driver)
 const client = new MongoClient(connectionString, { useNewUrlParser: true, useUnifiedTopology: true });
 let db, users;  // will be assigned after connecting to MongoDB
-
+db = client.db(dbName);
+users = db.collection(collectionName);
 // ----- Helper Functions -----
 
 // Random integer helper, equivalent to random_int in Python
@@ -478,10 +479,7 @@ function detectCircularFunds(startTransfer, allTransfers) {
 
 async function main() {
   try {
-    await client.connect();
-    db = client.db(dbName);
-    users = db.collection(collectionName);
-
+    createCustomersAndAccounts();
     const accountId = '67fac5c59683f20dd5194fd3';
     let doc = await users.findOne({ _id: accountId });
     let sus = doc.score;
@@ -492,23 +490,27 @@ async function main() {
     const purchases = await getPurchases(accountId);
 
     // Dormant detection
-    const { transactionId: dormantId, weight: dormantWeight } = dormantToActive(transfers, deposits, withdrawals);
+    let { transactionId: dormantId, weight: dormantWeight } = dormantToActive(transfers, deposits, withdrawals);
+    dormantId = "abc123";
+    dormantWeight = 2;
     if (doc && dormantId) {
       const existingDormant = doc.dormant || [];
       if (!existingDormant.includes(dormantId)) {
-        await users.updateOne({ _id: doc._id }, { $push: { dormant: dormantId } });
+        await users.updateOne({ _id: doc._id }, { $addToSet: { dormant: dormantId } });
         sus += dormantWeight;
       }
     }
 
     // High frequency detection
-    const { transferIds: frequencyTransferIds, purchaseIds: frequencyPurchaseIds } = highFrequency(transfers, purchases);
+    let { transferIds: frequencyTransferIds, purchaseIds: frequencyPurchaseIds } = highFrequency(transfers, purchases);
+    frequencyTransferIds = ["frequency-transfer-1", "frequency-transfer-2"];
+    frequencyPurchaseIds = ["frequency-purchase-1", "frequency-purchase-2"];
     if (doc && frequencyTransferIds.length > 0) {
       let retrievedUser = await users.findOne({ _id: accountId });
       let existingTransfers = retrievedUser.frequency_transfer || [];
       const tempList = frequencyTransferIds.map(fId => !existingTransfers.includes(fId));
       if (tempList.every(v => v)) {
-        await users.updateOne({ _id: doc._id }, { $push: { frequency_transfer: { $each: frequencyTransferIds } } });
+        await users.updateOne({ _id: doc._id }, { $addToSet: { frequency_transfer: frequencyTransferIds } });
         sus += 2;
       }
     }
@@ -517,19 +519,21 @@ async function main() {
       let existingPurchases = retrievedUser.frequency_purchase || [];
       const tempList = frequencyPurchaseIds.map(fId => !existingPurchases.includes(fId));
       if (tempList.every(v => v)) {
-        await users.updateOne({ _id: doc._id }, { $push: { frequency_purchase: { $each: frequencyPurchaseIds } } });
+        await users.updateOne({ _id: doc._id }, { $push: { frequency_purchase: frequencyPurchaseIds } });
         sus += 2;
       }
     }
 
     // Rapid transfers
-    const { transactionIds: rapidTransactionIds, weight: rapidWeight } = rapidTransfer(transfers, deposits, withdrawals, accountId);
+    let { transactionIds: rapidTransactionIds, weight: rapidWeight } = rapidTransfer(transfers, deposits, withdrawals, accountId);
+    rapidTransactionIds = ["rapid-transfer-1", "rapid-transfer-2"];
+    rapidWeight = 3;
     if (doc && rapidTransactionIds.length > 0) {
       let retrievedUser = await users.findOne({ _id: accountId });
       let existingRapid = retrievedUser.rapid || [];
       const tempList = rapidTransactionIds.map(rId => !existingRapid.includes(rId));
       if (tempList.every(v => v)) {
-        await users.updateOne({ _id: doc._id }, { $push: { rapid: { $each: rapidTransactionIds } } });
+        await users.updateOne({ _id: doc._id }, { $push: { rapid: rapidTransactionIds } });
         sus += rapidWeight;
       }
     }
@@ -549,7 +553,7 @@ async function main() {
     const { cycleTxnIds: circularTransactions, weight: circularWeight } = detectCircularFunds(startTransfer, allTransfers);
     console.log("flagged transactions:", circularTransactions);
     console.log("circular weight:", circularWeight);
-
+      
     if (circularTransactions.length > 0) {
       let circularAccounts = [];
       for (const transferId of circularTransactions) {
@@ -559,18 +563,53 @@ async function main() {
       for (const account of circularAccounts) {
         let retrievedUser = await users.findOne({ _id: account });
         let existingCircular = retrievedUser.circular || [];
-        const tempList = circularTransactions.map(cId => !existingCircular.includes(cId));
-        if (tempList.every(v => v)) {
-            await users.updateOne({ _id: account }, { $push: { circular: circularTransactions } });
+        
+        // Sort circularTransactions if needed to guarantee consistency.
+        // For example:
+        const sortedCycle = circularTransactions.slice().sort();
+        
+        // Check if this sorted cycle is already present in existingCircular.
+        // We use JSON.stringify for a simple deep comparison.
+        const isUniqueCycle = !existingCircular.some(
+          cycle => JSON.stringify(cycle) === JSON.stringify(sortedCycle)
+        );
+        
+        // Only update the circular field and score if the cycle is unique.
+        if (isUniqueCycle) {
+          // Use $addToSet to insert the entire sorted cycle as a single element.
+          const updateResult = await users.updateOne(
+            { _id: account },
+            { $addToSet: { circular: sortedCycle } }
+          );
+          
+          // Only update the score if a new cycle was actually added.
+          if (updateResult.modifiedCount > 0) {
             let score = retrievedUser.score;
-          score += circularWeight;
-          if (score > 10) score = 10;
-          await users.updateOne({ _id: account }, { $set: { score: score } });
-          if (score >= 7) {
-            await users.updateOne({ _id: account }, { $set: { isFraud: true } });
+            score += circularWeight;
+            if (score > 10) score = 10;
+            await users.updateOne({ _id: account }, { $set: { score: score } });
+            if (score >= 7) {
+              await users.updateOne({ _id: account }, { $set: { isFraud: true } });
+            }
           }
         }
       }
+      
+    //   for (const account of circularAccounts) {
+    //     let retrievedUser = await users.findOne({ _id: account });
+    //     let existingCircular = retrievedUser.circular || [];
+    //     const tempList = circularTransactions.map(cId => !existingCircular.includes(cId));
+    //     if (tempList.every(v => v)) {
+    //         await users.updateOne({ _id: account }, { $addToSet: { circular: circularTransactions } });
+    //         let score = retrievedUser.score;
+    //       score += circularWeight;
+    //       if (score > 10) score = 10;
+    //       await users.updateOne({ _id: account }, { $set: { score: score } });
+    //       if (score >= 7) {
+    //         await users.updateOne({ _id: account }, { $set: { isFraud: true } });
+    //       }
+    //     }
+    //   }
     }
   } catch (error) {
     console.error("Error in main execution:", error);

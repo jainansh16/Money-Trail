@@ -4,32 +4,35 @@ import random
 from datetime import datetime
 from dotenv import load_dotenv
 from collections import defaultdict
+from pymongo import MongoClient
+from bson import ObjectId
 
 # Load environment variables
 load_dotenv(dotenv_path="/Users/anshjain/Desktop/Money-Trail/credentials/.env")
 API_KEY = os.getenv("API_KEY")
 print("Loaded API Key:", API_KEY)
-
 BASE = 'http://api.nessieisreal.com'
+name = os.getenv("MONGO_DB_NAME")
+collection = os.getenv("MONGO_COLLECTION")
+connection_string = os.getenv("MONGO_CONNECTION")
+client = MongoClient(connection_string)
+db = client[name]
+users = db[collection]
 
 def get_transfers(account_id):
     transfers = requests.get(f"{BASE}/accounts/{account_id}/transfers?key={API_KEY}").json()
-    # print("transfers:", transfers)
     return transfers
 
 def get_deposits(account_id):
     deposits = requests.get(f"{BASE}/accounts/{account_id}/deposits?key={API_KEY}").json()
-    print("deposits:", deposits)
     return deposits
 
 def get_withdrawals(account_id):
     withdrawals = requests.get(f"{BASE}/accounts/{account_id}/withdrawals?key={API_KEY}").json()
-    print("withdrawals:", withdrawals)
     return withdrawals
 
 def get_purchases(account_id):
     purchases = requests.get(f"{BASE}/accounts/{account_id}/purchases?key={API_KEY}").json()
-    print("purchases:", purchases)
     return purchases
 
 def get_accounts(customer_id):
@@ -205,76 +208,228 @@ def find_all_transfers(customers):
 
     return from_account_transfers
 
-
 def detect_circular_funds(start_transfer, all_transfers):
 
-    # STEP 1: Build graph from all transfers
+    # STEP 1: Build a graph where each node is an account,
+    # and each edge stores payee_id, amount, and transaction_id
     graph = defaultdict(list)
     for t in all_transfers:
-        if "payer_id" in t and "payee_id" in t and "amount" in t:
-            graph[t["payer_id"]].append((t["payee_id"], float(t["amount"])))
+        if "payer_id" in t and "payee_id" in t and "amount" in t and "_id" in t:
+            graph[t["payer_id"]].append({
+                "payee_id": t["payee_id"],
+                "amount": float(t["amount"]),
+                "transaction_id": t["_id"]
+            })
 
-    flagged_accounts = set()
+    # STEP 2: Recursive DFS to find cycle of same-amount transfers
+    def dfs(account_path, txn_path, visited, origin, amount_to_match):
+        current = account_path[-1]
 
-    # STEP 2: DFS starting from the given transfer
-    def dfs(path, visited, origin, amount_to_match):
-        current = path[-1]
-        if len(path) > 4 and current == origin:
-            return path  # valid cycle
+        # A valid cycle must return to origin and include at least 4 accounts
+        if len(account_path) > 4 and current == origin:
+            return txn_path  # valid cycle → return transaction IDs
 
-        for neighbor, amt in graph[current]:
+        for edge in graph[current]:
+            neighbor = edge["payee_id"]
+            amt = edge["amount"]
+            txn_id = edge["transaction_id"]
+
+            # Skip visited accounts (except origin at end) and mismatched amounts
             if neighbor in visited:
                 continue
             if amt != amount_to_match:
                 continue
 
-            new_path = path + [neighbor]
-            print("visited | neighbor is :", visited | {neighbor})
-            cycle = dfs(new_path, visited | {neighbor}, origin, amount_to_match)
+            new_account_path = account_path + [neighbor]
+            new_txn_path = txn_path + [txn_id]
+            cycle = dfs(new_account_path, new_txn_path, visited | {neighbor}, origin, amount_to_match)
             if cycle:
                 return cycle
 
         return None
 
-    # Extract start info
+    # STEP 3: Extract info from starting transfer
     payer = start_transfer.get("payer_id")
     payee = start_transfer.get("payee_id")
     amount = float(start_transfer.get("amount", 0.0))
+    start_txn_id = start_transfer.get("_id")
 
-    if not payer or not payee or amount == 0:
-        return [], 0  # Invalid starting transfer
+    # Validate required fields
+    if not payer or not payee or not start_txn_id or amount == 0:
+        return [], 0  # Invalid starting point
 
-    path = [payer, payee]
-    visited = {payee}
-    cycle = dfs(path, visited, payer, amount)
+    # STEP 4: Start DFS
+    account_path = [payer, payee]
+    txn_path = [start_txn_id]
+    visited = {payee}  # allow return to payer at the end
+    cycle_txn_ids = dfs(account_path, txn_path, visited, payer, amount)
 
-    if cycle:
-        flagged_accounts.update(cycle[:-1])  # exclude repeated start
-    
-    return list(flagged_accounts), 3 if flagged_accounts else 0
+    # STEP 5: Return results
+    if cycle_txn_ids:
+        return cycle_txn_ids, 3
+    else:
+        return [], 0
+
 
 def main():
 
-    sus = 0
-    transfers = get_transfers("67fac5c59683f20dd5194fd3")
-    deposits = get_deposits("67fac5c59683f20dd5194fd3")
-    withdrawals = get_withdrawals("67fac5c59683f20dd5194fd3")
-    purchases = get_purchases("67fac5c59683f20dd5194fd3")
+    account_id = '67fac5c59683f20dd5194fd3'
+    doc = users.find_one({"_id": account_id})
+    sus = doc['score']
+    transfers = get_transfers(account_id)
+    deposits = get_deposits(account_id)
+    withdrawals = get_withdrawals(account_id)
+    purchases = get_purchases(account_id)
+    
+    ##dormant
+    dormant_id, dormant_weight = dormant_to_active(transfers, deposits, withdrawals)
+    if doc and dormant_id:
+        existing_ids = set(doc.get("dormant", []))  # existing IDs in the 'rapid' array
+        if dormant_id not in existing_ids:
+            db[collection].update_one(
+                {"_id": doc["_id"]},
+                {"$push": {"dormant": txn_id}}
+            )
+            sus += dormant_weight
+
+    ##high frequency
+    frequency_transaction_id, frequency_purchase_ids, frequency_weight = high_frequency(transfers, purchases)
+    if doc and (frequency_transaction_id or frequency_purchase_ids):
+        existing_ids = set(doc.get("frequency", []))
+        for txn_id in frequency_transaction_id + frequency_purchase_ids:
+            if txn_id not in existing_ids:
+                users.update_one(
+                    {"_id": doc["_id"]},
+                    {"$push": {"frequency": txn_id}}
+                )
+    sus += frequency_weight
+    
+    ##rapid
+    rapid_transaction_id, rapid_weight = rapid_transfer(transfers, deposits, withdrawals, account_id)
+    if doc and rapid_transaction_id:
+
+        retrieved_user = users.find_one({"_id": account_id})
+        existing_transactions = retrieved_user['rapid']
+        temp_list = []
+
+        for transfer in existing_transactions:
+
+            temp = False
+
+            for rapid_transition in rapid_transaction_id:
+
+                if rapid_transition not in transfer:
+
+                    temp = True
+
+            temp_list.append(temp)
+            
+        if False not in temp_list:
+            
+            db[collection].update_one(
+                {"_id": doc["_id"]},
+                {"$push": {"rapid": rapid_transaction_id}}
+            )
+
+        score = retrieved_user['score']
+        score += circular_weight
+
+        if score > 10:
+
+            score = 10
+        
+        users.update_one({'_id': account}, {'$set': {'score': sus}})
+
+
+
+        # existing_ids = set(doc.get("rapid", []))  # existing IDs in the 'rapid' array
+        # temp_bool = []
+        # for txn_id in rapid_transaction_id:
+        #     temp = False
+        #     if txn_id not in existing_ids:
+                # db[collection].update_one(
+                #     {"_id": doc["_id"]},
+                #     {"$push": {"rapid": txn_id}}
+        #         )
+        #         temp = True
+        #     temp_bool.append(temp)
+
+        # if True in temp_bool:
+            
+        #     sus += rapid_weight
+
+    if sus > 10:
+
+        sus = 10
+
+    print("sus is ", sus)
+
+    users.update_one({'_id': doc['_id']}, {'$set': {'score': sus}})
+    
+    #Circular
     start_transfer = transfers[-1]
-    print(start_transfer)
     customers = requests.get(f"{BASE}/customers?key={API_KEY}").json()
     all_transfers = find_all_transfers(customers)
-    flagged_accounts, circular_weight = detect_circular_funds(start_transfer, all_transfers)
-    print("flagged accounts:", flagged_accounts)
+    circular_transactions, circular_weight = detect_circular_funds(start_transfer, all_transfers)
+    print("flagged transactions:", circular_transactions)
     print("circular weight:", circular_weight)
 
-    # transaction_ids, rapid_weight = rapid_transfer(transfers, deposits, withdrawals, "67fab94b9683f20dd5194fc1")
-    # print("ids:", transaction_ids)
-    # print("weight:", rapid_weight)
+    if circular_transactions:
+    
+        circular_accounts = []
+        
+        for transfer_id in circular_transactions:
+
+            transaction = requests.get(f"{BASE}/transfers/{transfer_id}?key={API_KEY}").json()
+            circular_accounts.append(transaction['payer_id'])
+
+        for account in circular_accounts:
+
+            retrieved_user = users.find_one({"_id": account})
+            existing_transactions = retrieved_user['circular']
+            temp_list = []
+
+            for transfer in existing_transactions:
+
+                temp = False
+
+                for circle_transaction in circular_transactions:
+
+                    if circle_transaction not in transfer:
+
+                        temp = True
+
+                temp_list.append(temp)
+                
+            if False not in temp_list:
+                
+                users.update_one(
+                    {"_id": account},
+                    {"$push": {"circular": circular_transactions}}
+                )
+
+            score = retrieved_user['score']
+            score += circular_weight
+
+            if score > 10:
+
+                score = 10
+            
+            users.update_one({'_id': account}, {'$set': {'score': sus}})
+
+
+    # transaction_ids, rapid_weight = rapid_transfer(transfers, deposits, withdrawals, account_id)
+    # print("rapid ids:", transaction_ids)
+    # print("rapid weights:", rapid_weight)
+    # frequency_transfer_ids, frequency_purchase_ids, frequency_weight = high_frequency(transfers, purchases)
+    # print("high frequency transfer ids: ", frequency_transfer_ids)
+    # print("high frequency purchase ids:", frequency_purchase_ids)
+    # print("high frequency weights:", frequency_weight)
     #when doing mongodb, if dormant_transaction is not an 
     #empty string then we add it to the list of dormant transactions we have already checked
     # dormant_transaction, dormant_weight = dormant_to_active(transfers, deposits, withdrawals)
-    # sus += dormant_weight
+    # print("dormant ids:", dormant_transaction)
+    # print("dormant weight:", dormant_weight)
 
 if __name__ == "__main__":
     main()

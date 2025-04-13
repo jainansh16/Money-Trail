@@ -3,13 +3,19 @@ import requests
 import random
 from datetime import datetime
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 # Load environment variables
 load_dotenv(dotenv_path="/Users/anshjain/Desktop/Money-Trail/credentials/.env")
 API_KEY = os.getenv("API_KEY")
 print("Loaded API Key:", API_KEY)
-
 BASE = 'http://api.nessieisreal.com'
+name = os.getenv("MONGO_DB_NAME")
+collection = os.getenv("MONGO_COLLECTION")
+connection_string = os.getenv("MONGO_CONNECTION")
+client = MongoClient(connection_string)
+db = client[name]
+users = db[collection]
 
 # Initialize merchant list
 merchants = []
@@ -152,6 +158,19 @@ def create_customers_and_accounts():
             "customer_id": customer_id
         })
         print(f"✅ Created account for {first_names[i]} {last_names[i]} (Customer ID: {customer_id}, Account ID: {account_id})")
+
+        user = {
+            "_id": account_id,
+            "customer_id": customer_id,
+            "isFraud": False,
+            "score": 0,
+            "rapid": [], 
+            "frequency": [],
+            "dormant": [],
+            "circular": []
+        }
+
+        users.insert_one(user)
 
     return customers
 

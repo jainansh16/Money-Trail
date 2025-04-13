@@ -7,7 +7,7 @@ import Accounts from './pages/Accounts';
 import AccountDetail from './pages/AccountDetail';
 import Merchants from './pages/Merchants';
 import Alerts from './pages/Alerts';
-import AccountActionsPage from './pages/AccountActionsPage'; // 👈 Add this line
+import AccountActionsPage from './pages/AccountActionsPage'; 
 
 import './App.css';
 

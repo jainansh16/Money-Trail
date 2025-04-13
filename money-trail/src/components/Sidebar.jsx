@@ -10,10 +10,9 @@ const Sidebar = () => {
       </div>
       <nav>
         <Link to="/">Dashboard</Link>
-        <Link to="/accounts">Accounts</Link>
-        <Link to="/merchants">Merchants</Link>
-        <Link to="/alerts">Alerts</Link>
         <Link to="/account-actions">Account Actions</Link> {/* 👈 Added link */}
+        <Link to="/accounts">Accounts</Link>
+        <Link to="/alerts">Alerts</Link>
       </nav>
     </aside>
   );

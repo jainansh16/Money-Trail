@@ -9,15 +9,15 @@ export const DataProvider = ({ children }) => {
   const [merchantsData, setMerchantsData] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/accounts")
+    fetch("http://localhost:3000/api/accounts")
       .then(res => res.json())
       .then(data => setAccountsData(data));
 
-    fetch("http://localhost:5000/api/alerts")
+    fetch("http://localhost:3000/api/alerts")
       .then(res => res.json())
       .then(data => setAlertsData(data));
 
-    fetch("http://localhost:5000/api/merchants")
+    fetch("http://localhost:3000/api/merchants")
       .then(res => res.json())
       .then(data => setMerchantsData(data));
   }, []);

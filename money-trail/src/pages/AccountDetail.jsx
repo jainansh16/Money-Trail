@@ -93,17 +93,30 @@ const AccountDetail = () => {
               <h4>Flags Triggered</h4>
               <ul>
                 {account.flags.map((flag, i) => (
-                  <li key={i}>✅ {flag}</li>
+                  <li
+                  key={i}
+                  style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}
+                >
+                  <span style={{ fontSize: "1.5rem" }}>🚩</span>
+                  {flag}
+                </li>
                 ))}
               </ul>
             </div>
             <div style={{ width: "300px" }}>
-              <GaugeChart
-                id="gauge-chart1"
-                nrOfLevels={10}
-                percent={account.score / 10}
-                textColor="#000"
-              />
+            <h2 style={{ textAlign: "center", marginBottom: "0.5rem", fontSize: "1.75rem" }}>Risk Score </h2>
+            <GaugeChart
+              id="gauge-chart1"
+              nrOfLevels={11} // 0 to 10 means 11 segments
+              arcsLength={Array(11).fill(1 / 11)} // 11 equal-length arcs
+              colors={[
+                "#00FF00", "#33FF00", "#66FF00", "#99FF00", "#CCFF00",
+              "#FFFF00", "#FFCC00", "#FF9900", "#FF6600", "#FF3300", "#FF0000"
+              ]}
+              percent={account.score / 10} 
+              textColor="#000"
+              formatTextValue={() => `${account.score * 10}%`}
+            />
             </div>
           </div>
         )}
@@ -138,9 +151,16 @@ const AccountDetail = () => {
         {tab === "flags" && (
           <ul>
             {account.flags.map((flag, i) => (
-              <li key={i}>✅ {flag}</li>
+              <li
+                key={i}
+                style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <span style={{ fontSize: "1.5rem" }}>🚩</span>
+                {flag}
+              </li>
             ))}
           </ul>
+        
         )}
       </div>
     </div>

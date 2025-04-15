@@ -840,7 +840,7 @@ async function detectDormantToActive(accountId, deposits, withdrawals, transfers
      const secondLatest = allTxns[allTxns.length - 2];
 
      const latestDate = parseDate(latest.transaction_date);
-     const secondLatestDate = parseDate(second_latest.transaction_date);
+     const secondLatestDate = parseDate(secondLatest.transaction_date);
      const latestAmount = parseFloat(latest.amount || 0);
      // Check if the latest transaction is one of the relevant types
      const isRelevantType = ['deposit', 'withdrawal', 'transfer', 'p2p'].includes(latest.type?.toLowerCase()); // Nessie uses 'p2p' for transfers sometimes
@@ -1301,4 +1301,3 @@ client.connect()
     console.error('FATAL: Error connecting to MongoDB:', err);
     process.exit(1);
   });
-

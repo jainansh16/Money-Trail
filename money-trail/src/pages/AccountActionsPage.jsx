@@ -37,52 +37,34 @@ const AccountActionsPage = () => {
       setCreateStatus({ success: false, message: "Please fill in both first and last name." });
     }
   };
-const handleTransaction = (type) => {
-    const typeMap = {
-      deposit: "Deposit",
-      withdraw: "Withdrawal",
-      payment: "Payment",
-    };
 
+  // Transaction Handler for Deposit, Withdraw, Payment
+  const handleTransaction = async (type) => {
     if (transactionForm.firstName && transactionForm.lastName && transactionForm.amount) {
-      setTransactionStatus({
-        success: true,
-        message: `${typeMap[type]} of $${transactionForm.amount} completed.`,
-      });
+      try {
+        const response = await fetch('http://localhost:3000/api/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: transactionForm.firstName,
+            lastName: transactionForm.lastName,
+            amount: transactionForm.amount,
+            type // should be "deposit", "withdraw", or "payment"
+          })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setTransactionStatus({ success: true, message: data.message });
+        } else {
+          setTransactionStatus({ success: false, message: data.message });
+        }
+      } catch (error) {
+        setTransactionStatus({ success: false, message: error.message });
+      }
     } else {
-      setTransactionStatus({
-        success: false,
-        message: "All fields are required for this transaction.",
-      });
+      setTransactionStatus({ success: false, message: "All fields are required for this transaction." });
     }
   };
-  // Transaction Handler for Deposit, Withdraw, Payment
-  // const handleTransaction = async (type) => {
-  //   if (transactionForm.firstName && transactionForm.lastName && transactionForm.amount) {
-  //     try {
-  //       const response = await fetch('http://localhost:3000/api/transaction', {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({
-  //           firstName: transactionForm.firstName,
-  //           lastName: transactionForm.lastName,
-  //           amount: transactionForm.amount,
-  //           type // should be "deposit", "withdraw", or "payment"
-  //         })
-  //       });
-  //       const data = await response.json();
-  //       if (response.ok) {
-  //         setTransactionStatus({ success: true, message: data.message });
-  //       } else {
-  //         setTransactionStatus({ success: false, message: data.message });
-  //       }
-  //     } catch (error) {
-  //       setTransactionStatus({ success: false, message: error.message });
-  //     }
-  //   } else {
-  //     setTransactionStatus({ success: false, message: "All fields are required for this transaction." });
-  //   }
-  // };
 
   // Transfer Handler
   const handleTransfer = async () => {
@@ -145,27 +127,42 @@ const handleTransaction = (type) => {
         )}
       </div>
 
-      {/* Deposit / Withdrawal / Payment */}
+      {/* Deposit / Withdrawal / Payment Section */}
       <div className="section-box">
         <h2>Deposit / Withdrawal / Payment</h2>
         <div className="form-row">
-          <input type="text" placeholder="First Name" className="input"
+          <input
+            type="text"
+            placeholder="First Name"
+            className="input"
             value={transactionForm.firstName}
             onChange={(e) => setTransactionForm({ ...transactionForm, firstName: e.target.value })}
           />
-          <input type="text" placeholder="Last Name" className="input"
+          <input
+            type="text"
+            placeholder="Last Name"
+            className="input"
             value={transactionForm.lastName}
             onChange={(e) => setTransactionForm({ ...transactionForm, lastName: e.target.value })}
           />
-          <input type="number" placeholder="Amount" className="input"
+          <input
+            type="number"
+            placeholder="Amount"
+            className="input"
             value={transactionForm.amount}
             onChange={(e) => setTransactionForm({ ...transactionForm, amount: e.target.value })}
           />
         </div>
         <div className="button-group">
-          <button className="btn success" onClick={() => handleTransaction("deposit")}>Deposit</button>
-          <button className="btn warning" onClick={() => handleTransaction("withdraw")}>Withdraw</button>
-          <button className="btn info" onClick={() => handleTransaction("payment")}>Payment</button>
+          <button className="btn success" onClick={() => handleTransaction("deposit")}>
+            Deposit
+          </button>
+          <button className="btn warning" onClick={() => handleTransaction("withdraw")}>
+            Withdraw
+          </button>
+          <button className="btn info" onClick={() => handleTransaction("payment")}>
+            Payment
+          </button>
         </div>
         {transactionStatus && (
           <p className={`status-message ${transactionStatus.success ? 'status-success' : 'status-error'}`}>
